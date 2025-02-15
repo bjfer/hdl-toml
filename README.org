@@ -1,0 +1,100 @@
+# Created 2025-02-15 Sat 12:01
+#+options: ':nil *:t -:t ::t <:t H:3 \n:nil ^:nil arch:headline
+#+options: author:t broken-links:nil c:nil creator:nil
+#+options: d:(not "LOGBOOK") date:t e:t email:t expand-links:t f:t
+#+options: inline:t num:nil p:nil pri:nil prop:nil stat:t tags:t
+#+options: tasks:nil tex:nil timestamp:t title:t toc:nil todo:nil |:t
+#+title: Rust HDL TOML generator
+#+date: <2025-02-08 Sat>
+#+author: Bruno Fernandes
+#+email: br.fernandes@pm.me
+#+language: en
+#+select_tags: export
+#+export_file_name: ~/Projects/hdl-toml/README.org
+#+exclude_tags: noexport
+#+cite_export: 
+
+Small =el= file for Emacs to help create and maintain ~vhdl_ls.toml~ files required by the [[https://github.com/VHDL-LS/rust_hdl][rust hdl]] language server. The file should be located in a folder which is part of Emacs' load-path, normally *~/.emacs.d/site-lisp/*, and add the following line to your =init file=
+
+#+begin_src text
+  (require 'hdl-toml)
+#+end_src
+
+The following interactive functions are then available:
+
+- hdl-toml :: the most straightforward function, create a project definition, based on a selected folder, and a toml file according to the default options
+- hdl-toml-add-sources :: add all sources from a folder to a project definition as a /source group/
+- hdl-toml-update-sources :: update sources of a /source group/
+- hdl-toml-add-folder :: create a new project definition in a toml file based on a folder
+- hdl-toml-read-folder :: select a folder and treat each sub-directory as either singular projects or as part of the same project, adding each folder as a /source group/
+- hdl-toml-delete :: delete a project definition or /sources group/
+- hdl-toml-bare :: select a folder, create/update a toml file disregarding default values (see next section)
+
+
+Take notice that the functions search for vhdl sources in the selected folder and its sub-directories.
+* Options available
+
+The following options can be customized in the =hdl-toml= group (=M-x customize-group RET hdl-toml=):
+
+- use regexp for sources
+- use absolute or relative sources paths
+- use single toml file, either ~$HOME/.vhdl_ls.toml~ or file specify in ~VHDL_LS_CONFIG~ environment variable
+- vhdl standard to use
+
+
+When not using a single toml file, the functions ask which folder the toml file should be created; that selected folder should be part of the *lsp workspaces server*.
+* Example
+
+Running =hdl-toml= on a folder, will create the following project definition:
+
+#+begin_src text
+  name_of_folder.files = [
+    # full path of name_of_folder
+    'name_of_folder/src/source_1.vhd',
+    'name_of_folder/src/source_2.vhd',
+    'name_of_folder/src/module/source_1.vhd',
+    ...
+  ]
+#+end_src
+
+Running ~hdl-toml-add-sources~ to add sources from a different folder, will update the project definition with all the sources found in that folder (and sub-directories), creating a /source group/:
+
+#+begin_src text
+  name_of_folder.files = [
+    # /full/path/of/name_of_folder
+    'name_of_folder/src/source_1.vhd',
+    'name_of_folder/src/source_2.vhd',
+    'name_of_folder/src/module/source_1.vhd',
+    ...
+    # /full/path/of/added_folder
+    'name_of_added_folder/sources/source_1.vhd,
+    ...
+  ]
+#+end_src
+
+Adding the full path of the /source group/ as a comment, allows the function ~hdl-toml-update-sources~ to update the sources of an individual source group when necessary. ~hdl-toml-delete~ function also uses this to remove a full project or just a /source group/. 
+
+Running =hdl-toml-add-folder= and selecting another folder with sources, will add a new project definition to a toml file:
+
+#+begin_src text
+  name_of_folder.files = [
+    # /full/path/of/name_of_folder
+    'name_of_folder/src/source_1.vhd',
+    'name_of_folder/src/source_2.vhd',
+    'name_of_folder/src/module/source_1.vhd',
+    ...
+    # /full/path/of/added_folder
+    'name_of_added_folder/sources/source_1.vhd,
+    ...
+  ]
+
+  another_folder.files = [
+    # /full/path/of/another_folder
+    another_folder/source_1.vhd,
+    another_folder/tb/source_tb.vhd,
+    ...
+  ]
+#+end_src
+* Future updates
+
+- [ ] Update all sources in a project definition using predicate in ~hdl-toml-update-sources~
