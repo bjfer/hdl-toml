@@ -14,7 +14,7 @@
 #+exclude_tags: noexport
 #+cite_export: 
 
-Small =el= file for Emacs to help create and maintain ~vhdl_ls.toml~ files required by the [[https://github.com/VHDL-LS/rust_hdl][rust hdl]] language server. The file should be located in a folder which is part of Emacs' load-path, normally *~/.emacs.d/site-lisp/*, and add the following line to your =init file=
+Small =el= file for Emacs to help create and maintain ~vhdl_ls.toml~ files required by the [[https://github.com/VHDL-LS/rust_hdl][VHDL-LS]] language server. The file should be located in a folder which is part of Emacs' load-path, normally *~/.emacs.d/site-lisp/*, and add the following line to your =init file=
 
 #+begin_src text
   (require 'hdl-toml)
