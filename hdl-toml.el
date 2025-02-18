@@ -223,16 +223,19 @@
 
 (defun bjf/add-vhdl-proj-toml (&optional use-folders use-relative-paths vhdl-std)
   "Add project definition to an already existing toml file."
-  (let ((target-file (vhdl--toml-file)))
+  (let ((target-file (vhdl--toml-file))
+	(update nil)
+	(custom nil))
     (if (not (file-exists-p target-file))
    	(bjf/new-toml-file use-folders use-relative-paths vhdl-std)
       (with-current-buffer (find-file-noselect target-file)
-   	(if (and (bjf/found-toml-entry)
-   		 (y-or-n-p (concat "Entry " (vhdl--proj-name)
-   				   " exists, update? (if no, a custom name must be provided)")))
-   	    (bjf/update-toml-entry use-folders use-relative-paths)
+   	(and (setq update (bjf/found-toml-entry))
+   	     (setq custom (not (y-or-n-p (concat "Entry " (vhdl--proj-name)
+   				  " exists, update? (if no, a custom name must be provided)"))))
+	     (setcar vhdl~proj-def (bjf/cleanup-name (read-string "Enter custom name: "))))
+	(if (and update (not custom))
+	    (bjf/update-toml-entry use-folders use-relative-paths)
    	  (progn
-   	    (setcar vhdl~proj-def (bjf/cleanup-name (read-string "Enter custom name: ")))
    	    (end-of-buffer)
    	    (bjf/write-vhdl-proj-toml use-folders use-relative-paths)))))))
 
@@ -269,7 +272,7 @@
 
 (defun bjf/request-toml-file ()
   (expand-file-name (or (hdl~toml-default-file)
-   			(read-file-name "Target TOML file: " (bjf/current-vhdl-folder) nil t hdl~toml-name))))
+   			(read-file-name "Target TOML file: " (bjf/current-vhdl-folder) nil nil hdl~toml-name))))
 
 (defun bjf/delete-proj (toml-file vhdl-proj-name &optional vhdl-proj-entry)
   (with-current-buffer (find-file-noselect toml-file)
@@ -386,7 +389,7 @@
   (let ((vhdl-proj-folder (bjf/request-vhdl-folder)))
     (bjf/read-add-vhdl-proj-toml
      vhdl-proj-folder
-     (read-file-name "Target TOML file: " vhdl-proj-folder nil t hdl~toml-name)
+     (read-file-name "Target TOML file: " vhdl-proj-folder nil nil hdl~toml-name)
      (y-or-n-p "Use regexp for sources?")
      (y-or-n-p "Use relative paths?")
      (completing-read "VHDL standard:" hdl~toml-vhdl-standards nil t)
