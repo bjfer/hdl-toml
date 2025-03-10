@@ -196,9 +196,9 @@
   (beginning-of-buffer)
   (search-forward (concat (or vhdl-proj-name (vhdl--proj-name)) ".files") nil t))
 
-(defun bjf/found-proj-entry (vhdl-proj-name vhdl-proj-entry)
+(defun bjf/found-proj-entry (&optional vhdl-proj-name vhdl-proj-entry)
   (bjf/found-toml-entry vhdl-proj-name)
-  (search-forward (concat "# " vhdl-proj-entry) nil t))
+  (search-forward (concat "# " (or vhdl-proj-entry (vhdl--proj-path))) nil t))
 
 (defun bjf/update-toml-entry (&optional use-folders use-relative-paths)
   "Update entry. It assumes that found-toml-entry was run before"
@@ -234,7 +234,9 @@
    				  " exists, update? (if no, a custom name must be provided)"))))
 	     (setcar vhdl~proj-def (bjf/cleanup-name (read-string "Enter custom name: "))))
 	(if (and update (not custom))
-	    (bjf/update-toml-entry use-folders use-relative-paths)
+	    (progn
+	    (bjf/found-proj-entry)
+	    (bjf/update-toml-entry use-folders use-relative-paths))
    	  (progn
    	    (end-of-buffer)
    	    (bjf/write-vhdl-proj-toml use-folders use-relative-paths)))))))
