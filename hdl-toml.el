@@ -137,40 +137,40 @@
    			(bjf/get-vhdl-proj-rfiles)
    		      (vhdl--proj-files)))))
 
-(defun bjf/get-vhdl-files (&optional use-folders use-relative-paths)
-  (cond (use-folders (bjf/get-uniq-vhdl-folders use-relative-paths))
-   	(use-relative-paths (bjf/get-vhdl-proj-rfiles))
+(defun bjf/get-vhdl-files (&optional force-relative)
+  (cond ((or force-relative (hdl-toml-relative)) (bjf/get-uniq-vhdl-folders (hdl-toml-regexp)))
+   	((hdl-toml-regexp) (bjf/get-vhdl-proj-rfiles))
    	(t (vhdl--proj-files))))
 
-(defun bjf/init-vhdl-toml (&optional vhdl-std)
+(defun bjf/init-vhdl-toml ()
   (insert (concat hdl~toml-reference "\n"))
-  (insert (concat "standard = " (prin1-to-string (or vhdl-std "2008")) "\n\n[libraries]\n\n")))
+  (insert (concat "standard = " (prin1-to-string (hdl-toml-standard)) "\n\n[libraries]\n\n")))
 
-(defun bjf/vhdl-sources (&optional use-folders use-relative-path)
-  (let ((file-termination (concat (when use-folders "*.vhd") "',\n"))
-   	(vhdl-sources (bjf/get-vhdl-files use-folders use-relative-path))
+(defun bjf/vhdl-sources (&optional prefix suffix force-relative)
+  (let ((file-termination (concat (when (hdl-toml-relative) "*.vhd") suffix))
+   	(vhdl-sources (bjf/get-vhdl-files force-relative))
    	(result))
     (dolist (source vhdl-sources result)
-      (setq result (cons (concat  "'" source file-termination) result)))))
+      (setq result (cons (concat  prefix source file-termination) result)))))
 
-(defun bjf/print-vhdl-sources (&optional use-folders use-relative-path)
+(defun bjf/print-vhdl-sources ()
   (insert (concat "# " (vhdl--proj-path) "\n"))
-  (mapcar 'insert (bjf/vhdl-sources use-folders use-relative-path))
+  (mapcar 'insert (bjf/vhdl-sources "'" "',\n"))
   (save-current-buffer))
 
-(defun bjf/write-vhdl-proj-toml (&optional use-folders use-relative-paths)
+(defun bjf/write-vhdl-proj-toml ()
   (if (not (vhdl--proj-files))
       (message (concat "No vhdl file for project " (vhdl--proj-path)))
     (progn
       (insert (concat (vhdl--proj-name) ".files = [\n"))
-      (bjf/print-vhdl-sources use-folders use-relative-paths)
+      (bjf/print-vhdl-sources)
       (insert "]\n\n"))))
 
-(defun bjf/new-toml-file (&optional use-folders use-relative-paths vhdl-std)
+(defun bjf/new-toml-file ()
   (with-temp-file (vhdl--toml-file)
     ;; in case the buffer already exists
     (bjf/init-vhdl-toml)
-    (bjf/write-vhdl-proj-toml use-folders use-relative-paths)))
+    (bjf/write-vhdl-proj-toml)))
 
 (defun bjf/get-toml-entries (target-toml)
   (with-current-buffer (find-file-noselect target-toml)
@@ -200,12 +200,12 @@
   (bjf/found-toml-entry vhdl-proj-name)
   (search-forward (concat "# " (or vhdl-proj-entry (vhdl--proj-path))) nil t))
 
-(defun bjf/update-toml-entry (&optional use-folders use-relative-paths)
+(defun bjf/update-toml-entry ()
   "Update entry. It assumes that found-toml-entry was run before"
   (kill-region (progn (beginning-of-line) (point)) (goto-char (1- (search-forward-regexp ",\s*\n\\(#\\|]\\)"))))
-  (bjf/print-vhdl-sources use-folders use-relative-paths))
+  (bjf/print-vhdl-sources))
 
-(defun bjf/append-toml-entry (&optional use-folders use-relative-paths vhdl-std)
+(defun bjf/append-toml-entry ()
   "Append/updates sources to toml entry. It assumes that found-toml-entry was run before"
   (let ((limit-entry (save-excursion (search-forward-regexp "^]"))))
     ;; sources already exist, update sources
@@ -213,21 +213,20 @@
    	(kill-region (progn (beginning-of-line) (point))
    		     (goto-char (1- (search-forward-regexp ",\s*\n\\(#\\|]\\)"))))
       (goto-char (1- limit-entry)))
-    (bjf/print-vhdl-sources use-folders use-relative-paths)))
+    (bjf/print-vhdl-sources)))
 
-(defun bjf/read-add-vhdl-proj-toml (vhdl-folder &optional toml-file use-folders
-						use-relative-paths vhdl-std custom-proj-name)
+(defun bjf/read-add-vhdl-proj-toml (vhdl-folder &optional toml-file custom-proj-name)
   "Init vhdl~proj-def varible and add project to a toml"
   (setq--vhdl-proj-def vhdl-folder toml-file custom-proj-name)
-  (bjf/add-vhdl-proj-toml use-folders use-relative-paths vhdl-std))
+  (bjf/add-vhdl-proj-toml))
 
-(defun bjf/add-vhdl-proj-toml (&optional use-folders use-relative-paths vhdl-std)
+(defun bjf/add-vhdl-proj-toml ()
   "Add project definition to an already existing toml file."
   (let ((target-file (vhdl--toml-file))
 	(update nil)
 	(custom nil))
     (if (not (file-exists-p target-file))
-   	(bjf/new-toml-file use-folders use-relative-paths vhdl-std)
+   	(bjf/new-toml-file)
       (with-current-buffer (find-file-noselect target-file)
    	(and (setq update (bjf/found-toml-entry))
    	     (setq custom (not (y-or-n-p (concat "Entry " (vhdl--proj-name)
@@ -236,22 +235,22 @@
 	(if (and update (not custom))
 	    (progn
 	    (bjf/found-proj-entry)
-	    (bjf/update-toml-entry use-folders use-relative-paths))
+	    (bjf/update-toml-entry))
    	  (progn
    	    (end-of-buffer)
-   	    (bjf/write-vhdl-proj-toml use-folders use-relative-paths)))))))
+   	    (bjf/write-vhdl-proj-toml)))))))
 
-(defun bjf/add-sources-to-proj (toml-file vhdl-proj-name &optional use-folders use-relative-paths vhdl-std)
+(defun bjf/add-sources-to-proj (toml-file vhdl-proj-name)
   "Add sources to existing toml file."
   (if (not (file-exists-p toml-file))
       (and (y-or-n-p (concat "Target toml file " toml-file "does not exist, create?"))
-   	   (bjf/new-toml-file use-folders use-relative-paths vhdl-std))
+   	   (bjf/new-toml-file))
     (with-current-buffer (find-file-noselect toml-file)
       (if (bjf/found-toml-entry vhdl-proj-name)
-   	  (bjf/append-toml-entry use-folders use-relative-paths)
+   	  (bjf/append-toml-entry)
    	(message (concat "Project " vhdl-proj-name " not found."))))))
 
-(defun bjf/vhdl-projs-folder-toml (vhdl-projs-folder toml-file single-proj-name &optional use-folders use-relative-paths vhdl-std)
+(defun bjf/vhdl-projs-folder-toml (vhdl-projs-folder toml-file single-proj-name)
   (let ((single-proj-init))
     (dolist (vhdl-proj (directory-files vhdl-projs-folder t directory-files-no-dot-files-regexp))
       (when (file-directory-p vhdl-proj)
@@ -259,9 +258,8 @@
    						      single-proj-name))
    	;; custom-proj-name means it is a single proj
    	(if (and single-proj-init single-proj-name)
-   	    (bjf/add-sources-to-proj (vhdl--toml-file) single-proj-name use-folders
-   				     use-relative-paths vhdl-std)
-   	  (bjf/add-vhdl-proj-toml use-folders use-relative-paths))
+   	    (bjf/add-sources-to-proj (vhdl--toml-file) single-proj-name)
+   	  (bjf/add-vhdl-proj-toml))
    	(setq single-proj-init t)))))
 
 (defun bjf/current-vhdl-folder ()
@@ -299,7 +297,7 @@
   (interactive)
   (bjf/read-add-vhdl-proj-toml
    (bjf/request-vhdl-folder)
-   (hdl~toml-default-file) (hdl-toml-regexp) (hdl-toml-relative) (hdl-toml-standard))
+   (hdl~toml-default-file))
   (message (concat "Updated toml file " (vhdl--toml-file))))
 
 (defun hdl-toml-add-sources ()
@@ -316,10 +314,7 @@
     (bjf/add-sources-to-proj
      toml-file
      ;; select project to add source
-     project-name
-     (hdl-toml-regexp)
-     (hdl-toml-relative)
-     (hdl-toml-standard))
+     project-name)
     (message (concat "Added sources to project " project-name " in " (vhdl--toml-file)))))
 
 (defun hdl-toml-update-sources ()
@@ -340,7 +335,7 @@
     (setq--vhdl-proj-def toml-project-sources-path toml-file)
     (with-current-buffer (find-file-noselect toml-file)
       (bjf/found-proj-entry toml-selected-project-entry toml-project-sources-path)
-      (bjf/update-toml-entry (hdl-toml-regexp) (hdl-toml-relative)))
+      (bjf/update-toml-entry))
     (message (concat "Updated project " toml-selected-project-entry " sources in " (vhdl--toml-file)))))
 
 (defun hdl-toml-add-folder ()
@@ -349,10 +344,7 @@
   (let ((proj-folder (bjf/request-vhdl-folder)))
     (bjf/read-add-vhdl-proj-toml
      proj-folder
-     (bjf/request-toml-file)
-     (hdl-toml-regexp)
-     (hdl-toml-relative)
-     (hdl-toml-standard))
+     (bjf/request-toml-file))
     (message (concat "Created project " (vhdl--proj-name) " in toml file " (vhdl--toml-file)))))
 
 (defun hdl-toml-read-folder ()
@@ -363,10 +355,7 @@
     (bjf/vhdl-projs-folder-toml
      projs-folder
      (bjf/request-toml-file)
-     (and single-proj (read-string "Enter custom project name: "))
-     (hdl-toml-regexp)
-     (hdl-toml-relative)
-     (hdl-toml-standard))
+     (and single-proj (read-string "Enter custom project name: ")))
     (message (concat "Updated toml file " (vhdl--toml-file)))))
 
 (defun hdl-toml-delete ()
