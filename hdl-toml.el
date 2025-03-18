@@ -290,6 +290,13 @@
     (replace-regexp "^\n+" "\n")
     (save-current-buffer)))
 
+(defun bjf/add-vhdl-ext ()
+    (setq vhdl-ext-project-alist
+		 `((,(vhdl--proj-name)
+		    :root ,(vhdl--proj-path)
+		    :files ,(bjf/vhdl-sources nil nil t)))))
+
+
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Interactive functions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun hdl-toml ()
@@ -373,6 +380,12 @@
    								      toml-file
    								      toml-selected-project-entry) nil t)))
     (message (concat "Deleted project (or sources) in toml file " (vhdl--toml-file)))))
+
+(defun hdl-toml-set-vhdl-project ()
+  "Add current project to the vhdl-ext project alist."
+  (interactive)
+  (setq--vhdl-proj-def (bjf/request-vhdl-folder))
+  (bjf/add-vhdl-ext))
 
 (defun hdl-toml-bare ()
   "Generate/update toml file for rust hdl language server, asking for all options"
